@@ -51,8 +51,7 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
             texture: ball_texture_handle,
             ..default()
         },
-        Ball { size: BALL_SIZE },
-        Velocity(BALL_SPEED * BALL_STARTING_DIRECTION),
+        Ball { size: BALL_SIZE, speed: BALL_SPEED * Vec2::ZERO },
     ));
 
     let vertical_wall_size = vec2(WALL_THICKNESS, WALL_BLOCK_HEIGHT + WALL_THICKNESS);
@@ -62,6 +61,31 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
     spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, BOTTOM_WALL_Y, 0.0));
     spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, TOP_WALL_Y, 0.0));
 
+    spawn_bricks(&mut commands);
+
+    commands.spawn((TextBundle::from_sections([
+        TextSection::new(
+            "Score: ",
+            TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: SCOREBOARD_FONT_COLOR,
+                ..default()
+            },
+        ),
+        TextSection::from_style(TextStyle {
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: SCORE_COLOR,
+            ..default()
+        }),
+    ]).with_style(Style {
+        position_type: PositionType::Absolute,
+        top: SCOREBOARD_TEXT_PADDING,
+        left: SCOREBOARD_TEXT_PADDING,
+        ..default()
+    }), ));
+}
+
+fn spawn_bricks(commands: &mut Commands) {
     {
         let offset_x = LEFT_WALL_X + GAP_BETWEEN_LEFT_OF_SCREEN_AND_BRICKS + BRICK_SIZE.x * 0.5;
         let offset_y = BOTTOM_WALL_Y + GAP_BETWEEN_PADDLE_AND_BRICKS + BRICK_SIZE.y * 0.5;
@@ -100,28 +124,6 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
             }
         }
     }
-
-    commands.spawn((TextBundle::from_sections([
-        TextSection::new(
-            "Score: ",
-            TextStyle {
-                font_size: SCOREBOARD_FONT_SIZE,
-                color: SCOREBOARD_FONT_COLOR,
-                ..default()
-            },
-        ),
-        TextSection::from_style(TextStyle {
-            font_size: SCOREBOARD_FONT_SIZE,
-            color: SCORE_COLOR,
-            ..default()
-        }),
-    ])
-                        .with_style(Style {
-                            position_type: PositionType::Absolute,
-                            top: SCOREBOARD_TEXT_PADDING,
-                            left: SCOREBOARD_TEXT_PADDING,
-                            ..default()
-                        }), ));
 }
 
 fn spawn_walls(commands: &mut Commands, size: Vec2, translation: Vec3) {
@@ -165,10 +167,10 @@ fn update_paddle(
 fn check_ball_collisions(
     mut command: Commands,
     mut scoreboard: ResMut<Scoreboard>,
-    mut ball_query: Query<(&mut Velocity, &Transform, &Ball)>,
+    mut ball_query: Query<(&Transform, &mut Ball)>,
     mut collider_query: Query<(Entity, &Transform, &Collider, Option<&Brick>)>, // Note the mutability for Brick
 ) {
-    for (mut ball_velocity, ball_transform, ball) in &mut ball_query {
+    for (ball_transform, mut ball) in &mut ball_query {
         for (other_entity, transform, other, opt_brick) in &mut collider_query {
             let collision = collide(
                 ball_transform.translation,
@@ -181,18 +183,18 @@ fn check_ball_collisions(
             let mut reflect_y = false;
             if let Some(collision) = collision {
                 match collision {
-                    Collision::Left => reflect_x = ball_velocity.x > 0.0,
-                    Collision::Right => reflect_x = ball_velocity.x < 0.0,
-                    Collision::Top => reflect_y = ball_velocity.y < 0.0,
-                    Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
+                    Collision::Left => reflect_x = ball.speed.x > 0.0,
+                    Collision::Right => reflect_x = ball.speed.x < 0.0,
+                    Collision::Top => reflect_y = ball.speed.y < 0.0,
+                    Collision::Bottom => reflect_y = ball.speed.y > 0.0,
                     Collision::Inside => { /* do nothing */ }
                 }
 
                 if reflect_x {
-                    ball_velocity.x *= -1.;
+                    ball.speed.x *= -1.;
                 }
                 if reflect_y {
-                    ball_velocity.y *= -1.;
+                    ball.speed.y *= -1.;
                 }
 
                 if opt_brick.is_some() {
@@ -204,10 +206,10 @@ fn check_ball_collisions(
     }
 }
 
-fn update_ball(mut query: Query<(&Ball, &mut Transform, &mut Velocity)>) {
-    for (_, mut transform, velocity) in query.iter_mut() {
-        transform.translation.x += velocity.x * 0.02;
-        transform.translation.y += velocity.y * 0.02;
+fn update_ball(mut query: Query<(&mut Ball, &mut Transform)>) {
+    for (ball, mut transform) in query.iter_mut() {
+        transform.translation.x += ball.speed.x * 0.02;
+        transform.translation.y += ball.speed.y * 0.02;
     }
 }
 
@@ -217,14 +219,35 @@ fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
     }
 }
 
+fn launch_game(
+    mut commands: Commands,
+    mut scoreboard: ResMut<Scoreboard>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut ball_query: Query<(&mut Ball, &mut Transform)>,
+    mut bricks_query: Query<(Entity, Option<&Brick>)>,
+) {
+    for (mut ball, mut transform) in ball_query.iter_mut() {
+        if keyboard_input.pressed(KeyCode::Space) {
+            for (brick, option) in bricks_query.iter_mut() {
+                if option.is_some() {
+                    commands.entity(brick).despawn();
+                }
+            }
+            spawn_bricks(&mut commands);
+            scoreboard.score = 0;
+            transform.translation = BALL_STARTING_POSITION;
+            ball.speed = BALL_SPEED * BALL_STARTING_DIRECTION;
+        }
+    }
+}
+
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1))) // Set the background color
         .insert_resource(Scoreboard { score: 0 })
-        .add_systems(Update, (bevy::window::close_on_esc, update_scoreboard))
-        .add_systems(Update, bevy::window::close_on_esc)
+        .add_systems(Update, (bevy::window::close_on_esc, update_scoreboard, launch_game))
         .add_systems(Startup, setup)
         .add_systems(FixedUpdate, (update_paddle, update_ball, check_ball_collisions.after(update_ball)))
         .run();
