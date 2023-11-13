@@ -1,5 +1,6 @@
 use bevy::math::{vec2, vec3};
 use bevy::prelude::*;
+use bevy::sprite::collide_aabb::{collide, Collision};
 
 use crate::components::ball::*;
 use crate::components::paddle::*;
@@ -43,8 +44,8 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
             texture: ball_texture_handle,
             ..default()
         },
-        Ball,
-        Velocity(BALL_SPEED * Vec2 { x: 0.0, y: 0.0 }),
+        Ball { size: BALL_SIZE },
+        Velocity(BALL_SPEED * BALL_STARTING_DIRECTION),
     ));
 
     let vertical_wall_size = vec2(WALL_THICKNESS, WALL_BLOCK_HEIGHT + WALL_THICKNESS);
@@ -93,6 +94,41 @@ fn update_paddle(
     }
 }
 
+fn check_ball_collisions(
+    mut ball_query: Query<(&mut Velocity, &Transform, &Ball)>,
+    mut collider_query: Query<(&Transform, &Collider)>, // Note the mutability for Brick
+) {
+    for (mut ball_velocity, ball_transform, ball) in &mut ball_query {
+        for (transform, other) in &mut collider_query {
+            let collision = collide(
+                ball_transform.translation,
+                ball.size,
+                transform.translation,
+                other.size,
+            );
+
+            let mut reflect_x = false;
+            let mut reflect_y = false;
+            if let Some(collision) = collision {
+                match collision {
+                    Collision::Left => reflect_x = ball_velocity.x > 0.0,
+                    Collision::Right => reflect_x = ball_velocity.x < 0.0,
+                    Collision::Top => reflect_y = ball_velocity.y < 0.0,
+                    Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
+                    Collision::Inside => { /* do nothing */ }
+                }
+
+                if reflect_x {
+                    ball_velocity.x *= -1.;
+                }
+                if reflect_y {
+                    ball_velocity.y *= -1.;
+                }
+            }
+        }
+    }
+}
+
 fn update_ball(mut query: Query<(&Ball, &mut Transform, &mut Velocity)>) {
     for (_, mut transform, velocity) in query.iter_mut() {
         transform.translation.x += velocity.x * 0.02;
@@ -106,6 +142,6 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1))) // Set the background color
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, (update_paddle, update_ball))
+        .add_systems(FixedUpdate, (update_paddle, update_ball, check_ball_collisions.after(update_ball)))
         .run();
 }

@@ -8,7 +8,9 @@ pub const BALL_SPEED: f32 = 500.;
 pub const BALL_STARTING_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
 #[derive(Component)]
-pub struct Ball;
+pub struct Ball {
+    pub(crate) size: Vec2,
+}
 
 #[derive(Component, Deref, DerefMut)]
 pub struct Velocity(pub(crate) Vec2);
