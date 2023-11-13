@@ -1,12 +1,14 @@
-use bevy::math::vec3;
+use bevy::math::{vec2, vec3};
 use bevy::prelude::*;
+
 use crate::components::ball::*;
-use crate::components::paddle::Paddle;
 use crate::components::paddle::*;
+use crate::components::wall::*;
 
 mod components {
     pub mod paddle;
     pub mod ball;
+    pub mod wall;
 }
 
 fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
@@ -44,6 +46,33 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
         Ball,
         Velocity(BALL_SPEED * Vec2 { x: 0.0, y: 0.0 }),
     ));
+
+    let vertical_wall_size = vec2(WALL_THICKNESS, WALL_BLOCK_HEIGHT + WALL_THICKNESS);
+    let horizontal_wall_size = vec2(WALL_BLOCK_WIDTH + WALL_THICKNESS, WALL_THICKNESS);
+    spawn_walls(&mut commands, vertical_wall_size, vec3(LEFT_WALL_X, 0.0, 0.0));
+    spawn_walls(&mut commands, vertical_wall_size, vec3(RIGHT_WALL_X, 0.0, 0.0));
+    spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, BOTTOM_WALL_Y, 0.0));
+    spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, TOP_WALL_Y, 0.0));
+}
+
+fn spawn_walls(commands: &mut Commands, size: Vec2, translation: Vec3) {
+    commands.spawn(WallBundle {
+        sprite: SpriteBundle {
+            transform: Transform {
+                translation,
+                ..default()
+            },
+            sprite: Sprite {
+                color: WALL_COLOR,
+                custom_size: Some(size),
+                ..default()
+            },
+            ..default()
+        },
+        collider: Collider {
+            size,
+        },
+    });
 }
 
 fn update_paddle(
@@ -52,10 +81,14 @@ fn update_paddle(
 ) {
     for (_, mut transform) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::Left) {
-            transform.translation.x -= PADDLE_SPEED * 0.02;
+            if (transform.translation.x - PADDLE_SIZE.x / 2.) > LEFT_WALL_X + WALL_THICKNESS / 2.0 + 1.0 {
+                transform.translation.x -= PADDLE_SPEED * 0.02;
+            }
         }
         if keyboard_input.pressed(KeyCode::Right) {
-            transform.translation.x += PADDLE_SPEED * 0.02;
+            if (transform.translation.x + PADDLE_SIZE.x / 2.) < RIGHT_WALL_X - WALL_THICKNESS / 2.0 - 1.0 {
+                transform.translation.x += PADDLE_SPEED * 0.02;
+            }
         }
     }
 }
