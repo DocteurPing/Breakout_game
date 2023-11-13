@@ -28,6 +28,9 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
             ..default()
         },
         Paddle,
+        Collider {
+            size: PADDLE_SIZE,
+        },
     ));
     let ball_texture_handle = asser_server.load("textures/ball.png");
     commands.spawn((
