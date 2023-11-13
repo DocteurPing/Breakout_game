@@ -1,8 +1,8 @@
 use bevy::math::Vec2;
 use bevy::prelude::{Bundle, Color, Component, SpriteBundle};
 
-pub const LEFT_WALL_X: f32 = -400.;
-pub const RIGHT_WALL_X: f32 = 400.;
+pub const LEFT_WALL_X: f32 = -450.;
+pub const RIGHT_WALL_X: f32 = 450.;
 pub const TOP_WALL_Y: f32 = 300.;
 pub const BOTTOM_WALL_Y: f32 = -300.;
 pub const WALL_THICKNESS: f32 = 20.;

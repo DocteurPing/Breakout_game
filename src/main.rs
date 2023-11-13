@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::sprite::collide_aabb::{collide, Collision};
 
 use crate::components::ball::*;
+use crate::components::brick::*;
 use crate::components::paddle::*;
 use crate::components::wall::*;
 
@@ -10,6 +11,7 @@ mod components {
     pub mod paddle;
     pub mod ball;
     pub mod wall;
+    pub mod brick;
 }
 
 fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
@@ -57,6 +59,45 @@ fn setup(mut commands: Commands, asser_server: Res<AssetServer>) {
     spawn_walls(&mut commands, vertical_wall_size, vec3(RIGHT_WALL_X, 0.0, 0.0));
     spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, BOTTOM_WALL_Y, 0.0));
     spawn_walls(&mut commands, horizontal_wall_size, vec3(0.0, TOP_WALL_Y, 0.0));
+
+    {
+        let offset_x = LEFT_WALL_X + GAP_BETWEEN_LEFT_OF_SCREEN_AND_BRICKS + BRICK_SIZE.x * 0.5;
+        let offset_y = BOTTOM_WALL_Y + GAP_BETWEEN_PADDLE_AND_BRICKS + BRICK_SIZE.y * 0.5;
+
+        let bricks_total_width = (RIGHT_WALL_X - LEFT_WALL_X) - 2. * GAP_BETWEEN_LEFT_OF_SCREEN_AND_BRICKS;
+        let bricks_total_height = (TOP_WALL_Y - BOTTOM_WALL_Y)
+            - GAP_BETWEEN_TOP_OF_SCREEN_AND_BRICKS
+            - GAP_BETWEEN_PADDLE_AND_BRICKS;
+
+        let rows = (bricks_total_height / (BRICK_SIZE.y + GAP_BETWEEN_BRICKS)).floor() as i32;
+        let columns = (bricks_total_width / (BRICK_SIZE.x + GAP_BETWEEN_BRICKS)).floor() as i32;
+
+        for row in 0..rows {
+            for column in 0..columns {
+                let brick_pos = vec2(
+                    offset_x + column as f32 * (BRICK_SIZE.x + GAP_BETWEEN_BRICKS),
+                    offset_y + row as f32 * (BRICK_SIZE.y + GAP_BETWEEN_BRICKS),
+                );
+
+                commands.spawn((
+                    SpriteBundle {
+                        transform: Transform {
+                            translation: brick_pos.extend(0.0),
+                            ..default()
+                        },
+                        sprite: Sprite {
+                            color: BRICK_COLOR,
+                            custom_size: Some(BRICK_SIZE),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    Brick,
+                    Collider { size: BRICK_SIZE },
+                ));
+            }
+        }
+    }
 }
 
 fn spawn_walls(commands: &mut Commands, size: Vec2, translation: Vec3) {
