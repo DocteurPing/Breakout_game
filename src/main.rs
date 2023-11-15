@@ -151,15 +151,11 @@ fn update_paddle(
     mut query: Query<(&Paddle, &mut Transform)>,
 ) {
     for (_, mut transform) in query.iter_mut() {
-        if keyboard_input.pressed(KeyCode::Left) {
-            if (transform.translation.x - PADDLE_SIZE.x / 2.) > LEFT_WALL_X + WALL_THICKNESS / 2.0 + 1.0 {
-                transform.translation.x -= PADDLE_SPEED * 0.02;
-            }
+        if keyboard_input.pressed(KeyCode::Left) && (transform.translation.x - PADDLE_SIZE.x / 2.) > LEFT_WALL_X + WALL_THICKNESS / 2.0 + 1.0 {
+            transform.translation.x -= PADDLE_SPEED * 0.02;
         }
-        if keyboard_input.pressed(KeyCode::Right) {
-            if (transform.translation.x + PADDLE_SIZE.x / 2.) < RIGHT_WALL_X - WALL_THICKNESS / 2.0 - 1.0 {
-                transform.translation.x += PADDLE_SPEED * 0.02;
-            }
+        if keyboard_input.pressed(KeyCode::Right) && (transform.translation.x + PADDLE_SIZE.x / 2.) < RIGHT_WALL_X - WALL_THICKNESS / 2.0 - 1.0 {
+            transform.translation.x += PADDLE_SPEED * 0.02;
         }
     }
 }
