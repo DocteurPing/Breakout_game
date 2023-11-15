@@ -161,7 +161,7 @@ fn update_paddle(
 }
 
 fn check_ball_collisions(
-    mut command: Commands,
+    mut commands: Commands,
     mut scoreboard: ResMut<Scoreboard>,
     mut ball_query: Query<(&Transform, &mut Ball)>,
     mut collider_query: Query<(Entity, &Transform, &Collider, Option<&Brick>)>, // Note the mutability for Brick
@@ -195,7 +195,10 @@ fn check_ball_collisions(
 
                 if opt_brick.is_some() {
                     scoreboard.score += 1;
-                    command.entity(other_entity).despawn();
+                    commands.entity(other_entity).despawn();
+                    if (scoreboard.score % 10) == 0 {
+                        ball.speed *= 1.1;
+                    }
                 }
             }
         }
